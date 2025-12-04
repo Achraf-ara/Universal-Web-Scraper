@@ -35,6 +35,30 @@ st.markdown("""
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
         min-height: 100vh;
     }
+
+       /* LOGIN SCREEN STYLING */
+    .login-container {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border-radius: 10px;
+        padding: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        text-align: center;
+        margin-top: 100px;
+        margin-bottom: 15px;
+    }
+    .login-icon {
+        font-size: 50px;
+        margin-bottom: 20px;
+    }
+    .login-title {
+        color: white;
+        font-family: 'Helvetica Neue', sans-serif;
+        font-weight: 700;
+        margin-bottom: 20px;
+        letter-spacing: 1px;
+    }
     
     /* Header styling */
     .main-header {
@@ -404,6 +428,43 @@ async def run_scraper(start_url, num_pages, headless, wait_time, status_box, pro
 # ==================== UI ====================
 
 def main():
+    
+    # --- AUTHENTICATION CHECK ---
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    # --- CREATIVE LOGIN UI ---
+    if not st.session_state.authenticated:
+        # Use columns to center the login box
+        col1, col2, col3 = st.columns([1, 2, 1])
+        
+        with col2:
+            st.markdown("""
+                <div class="login-container">
+                    <div class="login-icon">🔐</div>
+                    <div class="login-title">SECURE ACCESS REQURIED</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Form for password
+            # FIX: Added a label "Password" and set label_visibility="collapsed"
+            password = st.text_input(
+                "Password", 
+                type="password", 
+                placeholder="Enter Access Key...", 
+                label_visibility="collapsed"
+            )
+            
+            if st.button("AUTHENTICATE", use_container_width=True):
+                if password == "daliloya@2026": # CHANGE THIS PASSWORD
+                    st.session_state.authenticated = True
+                    st.rerun()
+                else:
+                    st.error("⛔ Access Denied: Invalid Key")
+        return
+
+    # --- MAIN APPLICATION (Only shows if authenticated) ---
+    
     
     # Header
     st.markdown("""
