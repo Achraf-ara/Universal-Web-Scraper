@@ -371,7 +371,23 @@ async def run_scraper(start_url, num_pages, headless, wait_time, status_box, pro
 
     async with async_playwright() as p:
         status_box.info("🚀 Launching browser engine...")
-        browser = await p.chromium.launch(headless=headless)
+        
+        # FIX FOR STREAMLIT CLOUD
+        if sys.platform == 'linux':
+            browser = await p.chromium.launch(
+                headless=True,
+                executable_path="/usr/bin/chromium", # <--- Tells it to use the installed system browser
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ]
+            )
+        else:
+            # Settings for Local PC
+            browser = await p.chromium.launch(headless=headless)
+            
+        context = await browser.new_context()
         context = await browser.new_context()
         page = await context.new_page()
 
