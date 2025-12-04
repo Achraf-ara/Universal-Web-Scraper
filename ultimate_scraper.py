@@ -10,7 +10,6 @@ from bs4 import BeautifulSoup, Tag
 import pandas as pd
 import sys
 import re
-import subprocess 
 import json
 import time
 from urllib.parse import urljoin, unquote
@@ -362,6 +361,7 @@ class AltenpflegeExtractor:
 async def run_scraper(start_url, num_pages, headless, wait_time, status_box, progress_bar):
     all_results = []
     
+    # DETERMINE MODE
     is_make_it = "make-it-in-germany" in start_url
     is_altenpflege = "altenpflege.de" in start_url
     
@@ -372,26 +372,22 @@ async def run_scraper(start_url, num_pages, headless, wait_time, status_box, pro
     async with async_playwright() as p:
         status_box.info("🚀 Launching browser engine...")
         
-        # --- NUCLEAR FIX: AUTO-INSTALL BROWSER ON LINUX ---
-        if sys.platform == "linux":
-            try:
-                # This forces Playwright to download the browser if missing
-                status_box.text("⚙️ Installing Chromium... (This happens once)")
-                subprocess.run(["playwright", "install", "chromium"], check=True)
-            except Exception as e:
-                status_box.warning(f"Browser install warning: {e}")
-        # --------------------------------------------------
-
-        # Launch Browser (Standard Method now works because we installed it above)
-        browser = await p.chromium.launch(
-            headless=True, 
-            args=[
-                "--no-sandbox", 
-                "--disable-dev-shm-usage", 
-                "--disable-gpu"
-            ]
-        )
-        
+        # FIX FOR STREAMLIT CLOUD
+        if sys.platform == 'linux':
+            browser = await p.chromium.launch(
+                headless=True,
+                executable_path="/usr/bin/chromium", # <--- Tells it to use the installed system browser
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ]
+            )
+        else:
+            # Settings for Local PC
+            browser = await p.chromium.launch(headless=headless)
+            
+        context = await browser.new_context()
         context = await browser.new_context()
         page = await context.new_page()
 
@@ -401,23 +397,31 @@ async def run_scraper(start_url, num_pages, headless, wait_time, status_box, pro
             
             try:
                 await page.goto(target_url, timeout=45000)
+                
+                # Polite wait
                 if current_page > 1: await asyncio.sleep(wait_time)
 
                 if is_altenpflege:
+                    # Altenpflege: Extract data directly from list (JS decoded)
                     page_data = await AltenpflegeExtractor.extract_list(page, target_url)
                     all_results.extend(page_data)
                     progress_bar.progress(current_page / num_pages)
+                    
                     if not page_data:
                         status_box.warning(f"No results on page {current_page}.")
                         break
                         
                 elif is_make_it:
+                    # Make-it: Extract Links then Deep Scrape
                     links = await MakeItGermanyExtractor.extract_list(page, target_url)
+                    
                     if not links:
                         status_box.warning(f"No links found on page {current_page}.")
                         break
                         
+                    # Deep Scrape Loop
                     deep_page = await context.new_page()
+                    # Block images for speed
                     await deep_page.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font"] else route.continue_())
                     
                     for i, link in enumerate(links):
@@ -436,7 +440,7 @@ async def run_scraper(start_url, num_pages, headless, wait_time, status_box, pro
         await browser.close()
     
     return all_results
-    
+
 # ==================== UI ====================
 
 def main():
