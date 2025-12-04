@@ -456,7 +456,7 @@ def main():
             )
             
             if st.button("AUTHENTICATE", use_container_width=True):
-                if password == "daliloya@2026": # CHANGE THIS PASSWORD
+                if password == st.secrets["APP_PASSWORD"]: 
                     st.session_state.authenticated = True
                     st.rerun()
                 else:
